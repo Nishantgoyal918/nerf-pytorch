@@ -851,7 +851,6 @@ def train():
                                                         **render_kwargs_test)
 
                 rgb = rgb.cpu().numpy()
-                target = target.cpu().numpy()
                 disp = disp.cpu().numpy()
                 disp = disp / np.max(disp)
                 wandb.log({
