@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm, trange
+import wandb
 
 import matplotlib.pyplot as plt
 
@@ -527,6 +528,8 @@ def config_parser():
                         help='frequency of testset saving')
     parser.add_argument("--i_video",   type=int, default=50000, 
                         help='frequency of render_poses video saving')
+    parser.add_argument("--use_wandb", action='store_true', 
+                        help='use wandb for logging')
 
     return parser
 
@@ -535,6 +538,10 @@ def train():
 
     parser = config_parser()
     args = parser.parse_args()
+
+    # Init Wandb if use_wandb true
+    if args.use_wandb:
+        wandb.init(project=args.expname)
 
     # Load data
     K = None
@@ -827,6 +834,32 @@ def train():
     
         if i%args.i_print==0:
             tqdm.write(f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}")
+
+            if args.use_wandb:
+                wandb.log({
+                    "Train Loss": loss.item(),
+                    "Train PSNR": psnr.item()
+                    }, step=i)
+
+            if i%args.i_img==0 and args.use_wandb:
+                # Log a rendered validation view to Tensorboard
+                img_i=np.random.choice(i_val)
+                target = images[img_i]
+                pose = poses[img_i, :3,:4]
+                with torch.no_grad():
+                    rgb, disp, acc, extras = render(H, W, focal, chunk=args.chunk, c2w=pose,
+                                                        **render_kwargs_test)
+
+                psnr = mse2psnr(img2mse(rgb, target))
+                rgb = rgb.cpu().numpy()
+                disp = disp.cpu().numpy()
+                disp = disp / np.max(disp)
+                wandb.log({
+                    "RGB Validation": wandb.Image(to8b(rgb)),
+                    "Disparity Map Validation": wandb.Image(to8b(disp))
+                }, step=i)
+
+
         """
             print(expname, i, psnr.numpy(), loss.numpy(), global_step.numpy())
             print('iter time {:.05f}'.format(dt))
