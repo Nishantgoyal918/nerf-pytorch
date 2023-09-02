@@ -850,8 +850,8 @@ def train():
                     rgb, disp, acc, extras = render(H, W, K, chunk=args.chunk, c2w=pose,
                                                         **render_kwargs_test)
 
-                psnr = mse2psnr(img2mse(rgb, target))
                 rgb = rgb.cpu().numpy()
+                target = target.cpu().numpy()
                 disp = disp.cpu().numpy()
                 disp = disp / np.max(disp)
                 wandb.log({
