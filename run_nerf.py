@@ -705,7 +705,8 @@ def train():
         rays_rgb = torch.Tensor(rays_rgb).to(device)
 
 
-    N_iters = 200000 + 1
+    # N_iters = 200000 + 1
+    N_iters = 150000 + 1
     print('Begin')
     print('TRAIN views are', i_train)
     print('TEST views are', i_test)
@@ -813,7 +814,15 @@ def train():
             print('Done, saving', rgbs.shape, disps.shape)
             moviebase = os.path.join(basedir, expname, '{}_spiral_{:06d}_'.format(expname, i))
             imageio.mimwrite(moviebase + 'rgb.mp4', to8b(rgbs), fps=30, quality=8)
-            imageio.mimwrite(moviebase + 'disp.mp4', to8b(disps / np.max(disps)), fps=30, quality=8)
+            imageio.mimwrite(moviebase + 'disp.mp4', to8b(np.expand_dims(disps / np.max(disps), axis=len(disps.shape))), fps=30, quality=8)
+
+
+            if args.use_wandb:
+                wandb.log({
+                    'RGB Validation Video': wandb.Video(moviebase + 'rgb.mp4'),
+                    'Disparity Validation Video': wandb.Video(moviebase + 'disp.mp4')
+                })
+
 
             # if args.use_viewdirs:
             #     render_kwargs_test['c2w_staticcam'] = render_poses[0][:3,:4]
@@ -855,7 +864,7 @@ def train():
                 disp = disp / np.max(disp)
                 wandb.log({
                     "RGB Validation": wandb.Image(to8b(rgb)),
-                    "Disparity Map Validation": wandb.Image(to8b(disp))
+                    "Disparity Map Validation": wandb.Image(to8b(np.expand_dims(disp, axis=len(disp.shape))))
                 }, step=i)
 
 
